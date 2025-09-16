@@ -7,6 +7,7 @@ class Movie(models.Model):
     price = models.IntegerField()
     description = models.TextField()
     image = models.ImageField(upload_to='movie_images/')
+    amount_left = models.PositiveIntegerField(default=0, help_text="Number of copies available for purchase")
 
     def __str__(self):
         return str(self.id) + ' - ' + self.name

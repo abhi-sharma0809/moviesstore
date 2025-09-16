@@ -54,6 +54,10 @@ def purchase(request):
         item.order = order
         item.quantity = cart[str(movie.id)]
         item.save()
+        
+        # Decrement the amount_left for the movie
+        movie.amount_left -= int(cart[str(movie.id)])
+        movie.save()
 
     request.session['cart'] = {}
     template_data = {}
