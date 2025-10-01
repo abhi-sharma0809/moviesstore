@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<div class="p-3">
+  <div class="container">
+    <div class="row mt-3">
+      <div class="col-md-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2>{{ template_data.petition.movie_name }}</h2>
+          <a href="{% url 'movies.petition_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Petitions
+          </a>
+        </div>
+        <hr />
+
+        <!-- Messages -->
+        {% if messages %}
+        <div class="mb-3">
+          {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="card">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                <h5 class="card-title">Petition Details</h5>
+                <p class="card-text">{{ template_data.petition.description }}</p>
+                
+                <div class="mt-4">
+                  <h6>Voting Results</h6>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <div class="d-flex align-items-center">
+                        <i class="fas fa-thumbs-up text-success fa-2x me-3"></i>
+                        <div>
+                          <h4 class="mb-0 text-success">{{ template_data.petition.vote_count }}</h4>
+                          <small class="text-muted">Yes Votes</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="d-flex align-items-center">
+                        <i class="fas fa-thumbs-down text-danger fa-2x me-3"></i>
+                        <div>
+                          <h4 class="mb-0 text-danger">{{ template_data.petition.no_vote_count }}</h4>
+                          <small class="text-muted">No Votes</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-4">
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title">Petition Info</h6>
+                    <p class="card-text">
+                      <strong>Created by:</strong> {{ template_data.petition.created_by.username }}<br>
+                      <strong>Date:</strong> {{ template_data.petition.created_at|date:"F d, Y" }}<br>
+                      <strong>Time:</strong> {{ template_data.petition.created_at|time:"g:i A" }}
+                    </p>
+                    
+                    {% if template_data.petition.is_approved %}
+                    <div class="alert alert-success">
+                      <i class="fas fa-check-circle"></i> This petition has been approved!
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Voting Section -->
+        {% if user.is_authenticated %}
+        <div class="card mt-4">
+          <div class="card-body">
+            <h5 class="card-title">Cast Your Vote</h5>
+            <p class="card-text">
+              Do you think "{{ template_data.petition.movie_name }}" should be added to our catalog?
+            </p>
+            
+            {% if template_data.user_vote %}
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> 
+              You voted <strong>{{ template_data.user_vote.vote_type|title }}</strong> on {{ template_data.user_vote.voted_at|date:"M d, Y" }}. 
+              You can change your vote below.
+            </div>
+            {% endif %}
+            
+            <form method="POST" action="{% url 'movies.vote_petition' petition_id=template_data.petition.id %}">
+              {% csrf_token %}
+              <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="vote_type" id="vote_yes" value="yes" 
+                       {% if template_data.user_vote and template_data.user_vote.vote_type == 'yes' %}checked{% endif %}>
+                <label class="btn btn-outline-success" for="vote_yes">
+                  <i class="fas fa-thumbs-up"></i> Yes, Add It!
+                </label>
+
+                <input type="radio" class="btn-check" name="vote_type" id="vote_no" value="no"
+                       {% if template_data.user_vote and template_data.user_vote.vote_type == 'no' %}checked{% endif %}>
+                <label class="btn btn-outline-danger" for="vote_no">
+                  <i class="fas fa-thumbs-down"></i> No, Don't Add It
+                </label>
+              </div>
+              
+              <div class="mt-3">
+                <button type="submit" class="btn btn-gt-navy text-white">
+                  {% if template_data.user_vote %}
+                    <i class="fas fa-edit"></i> Update Vote
+                  {% else %}
+                    <i class="fas fa-vote-yea"></i> Submit Vote
+                  {% endif %}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <div class="card mt-4">
+          <div class="card-body text-center">
+            <h5 class="card-title">Want to vote?</h5>
+            <p class="card-text">Please log in to cast your vote on this petition.</p>
+            <a href="{% url 'accounts.login' %}" class="btn btn-gt-navy text-white">
+              <i class="fas fa-sign-in-alt"></i> Login to Vote
+            </a>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
