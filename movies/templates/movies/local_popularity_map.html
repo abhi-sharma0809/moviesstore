@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<div class="p-3">
+  <div class="container">
+    <div class="row mt-3">
+      <div class="col mx-auto mb-3">
+        <h2>Local Popularity Map</h2>
+        <hr />
+        <p class="card-text">
+          Discover which movies are trending in different geographic regions. Click on a region to see the most popular movies there.
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-8">
+        <!-- Map Container -->
+        <div class="card">
+          <div class="card-body">
+            <div id="map" style="height: 500px; width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <!-- Region Info Panel -->
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Region Information</h5>
+          </div>
+          <div class="card-body">
+            <div id="region-info">
+              <p class="text-muted">Click on a region marker to see trending movies.</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Trending Movies Panel -->
+        <div class="card mt-3">
+          <div class="card-header">
+            <h5 class="mb-0">Trending Movies</h5>
+          </div>
+          <div class="card-body">
+            <div id="trending-movies">
+              <p class="text-muted">Select a region to see trending movies.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Region List -->
+    <div class="row mt-4">
+      <div class="col-12">
+        <h4>All Regions</h4>
+        <div class="row">
+          {% for region_data in template_data.regions %}
+          <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title">{{ region_data.region.name }}</h6>
+                <p class="card-text">
+                  <small class="text-muted">
+                    {{ region_data.total_purchases }} total purchases
+                  </small>
+                </p>
+                {% if region_data.top_movies %}
+                <div class="mb-2">
+                  <strong>Top Movies:</strong>
+                  <ul class="list-unstyled mt-1">
+                    {% for movie in region_data.top_movies|slice:":3" %}
+                    <li>
+                      <small>
+                        <a href="{% url 'movies.show' id=movie.id %}">{{ movie.name }}</a>
+                        ({{ movie.region_purchases }} purchases)
+                      </small>
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                {% endif %}
+                <a href="{% url 'movies.region_detail' region_id=region_data.region.id %}" class="btn btn-sm btn-gt-navy text-white">
+                  View Details
+                </a>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12">
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> No regions available. Please contact an administrator to set up geographic regions.
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the map centered on Georgia Tech
+    var map = L.map('map').setView([33.7756, -84.3963], 10);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Region data from Django
+    var regions = [
+        {% for region_data in template_data.regions %}
+        {
+            id: {{ region_data.region.id }},
+            name: "{{ region_data.region.name }}",
+            lat: {{ region_data.region.latitude }},
+            lng: {{ region_data.region.longitude }},
+            zoom: {{ region_data.region.zoom_level }},
+            totalPurchases: {{ region_data.total_purchases }},
+            topMovies: [
+                {% for movie in region_data.top_movies %}
+                {
+                    id: {{ movie.id }},
+                    name: "{{ movie.name }}",
+                    purchases: {{ movie.region_purchases }}
+                }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Add markers for each region
+    regions.forEach(function(region) {
+        var marker = L.marker([region.lat, region.lng]).addTo(map);
+        
+        // Create popup content
+        var popupContent = '<div><h6>' + region.name + '</h6>';
+        popupContent += '<p><strong>Total Purchases:</strong> ' + region.totalPurchases + '</p>';
+        if (region.topMovies.length > 0) {
+            popupContent += '<p><strong>Top Movies:</strong></p><ul>';
+            region.topMovies.slice(0, 3).forEach(function(movie) {
+                popupContent += '<li>' + movie.name + ' (' + movie.purchases + ' purchases)</li>';
+            });
+            popupContent += '</ul>';
+        }
+        popupContent += '<a href="/movies/region/' + region.id + '/" class="btn btn-sm btn-primary">View Details</a></div>';
+        
+        marker.bindPopup(popupContent);
+        
+        // Add click event to show region info
+        marker.on('click', function() {
+            showRegionInfo(region);
+        });
+    });
+    
+    function showRegionInfo(region) {
+        // Update region info panel
+        var regionInfo = document.getElementById('region-info');
+        regionInfo.innerHTML = '<h6>' + region.name + '</h6>' +
+                              '<p><strong>Total Purchases:</strong> ' + region.totalPurchases + '</p>' +
+                              '<p><strong>Coordinates:</strong> ' + region.lat.toFixed(4) + ', ' + region.lng.toFixed(4) + '</p>';
+        
+        // Update trending movies panel
+        var trendingMovies = document.getElementById('trending-movies');
+        if (region.topMovies.length > 0) {
+            var moviesHtml = '<h6>Top Movies in ' + region.name + '</h6><ul class="list-unstyled">';
+            region.topMovies.forEach(function(movie) {
+                moviesHtml += '<li class="mb-2">' +
+                             '<a href="/movies/' + movie.id + '/">' + movie.name + '</a><br>' +
+                             '<small class="text-muted">' + movie.purchases + ' purchases</small>' +
+                             '</li>';
+            });
+            moviesHtml += '</ul>';
+            trendingMovies.innerHTML = moviesHtml;
+        } else {
+            trendingMovies.innerHTML = '<p class="text-muted">No movie purchases in this region yet.</p>';
+        }
+    }
+});
+</script>
+{% endblock content %}
+

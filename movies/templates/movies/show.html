@@ -7,6 +7,16 @@
       <div class="col-md-6 mx-auto mb-3">
         <h2>{{ template_data.movie.name }}</h2>
         <hr />
+        
+        <!-- Movie Rating Display -->
+        <div class="mb-3">
+          <div class="d-flex align-items-center">
+            <span class="me-2"><b>Rating:</b></span>
+            <span class="text-warning fs-4">{{ template_data.movie.stars_display }}</span>
+            <span class="ms-2 text-muted">({{ template_data.movie.average_rating }}/5 from {{ template_data.movie.rating_count }} ratings)</span>
+          </div>
+        </div>
+        
         <p><b>Description:</b> {{ template_data.movie.description }}</p>
         <p><b>Price:</b> ${{ template_data.movie.price }}</p>
         <p class="card-text">
@@ -25,6 +35,41 @@
             </div>
           </form>
         </p>
+
+        <!-- Rating Section -->
+        {% if user.is_authenticated %}
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Rate this Movie</h5>
+            {% if template_data.user_rating %}
+            <p class="text-muted">You rated this movie {{ template_data.user_rating.rating }} stars. You can change your rating below.</p>
+            {% endif %}
+            
+            <form method="POST" action="{% url 'movies.rate_movie' movie_id=template_data.movie.id %}">
+              {% csrf_token %}
+              <div class="rating-input">
+                <input type="radio" id="star5" name="rating" value="5" {% if template_data.user_rating and template_data.user_rating.rating == 5 %}checked{% endif %}>
+                <label for="star5" class="star">★</label>
+                <input type="radio" id="star4" name="rating" value="4" {% if template_data.user_rating and template_data.user_rating.rating == 4 %}checked{% endif %}>
+                <label for="star4" class="star">★</label>
+                <input type="radio" id="star3" name="rating" value="3" {% if template_data.user_rating and template_data.user_rating.rating == 3 %}checked{% endif %}>
+                <label for="star3" class="star">★</label>
+                <input type="radio" id="star2" name="rating" value="2" {% if template_data.user_rating and template_data.user_rating.rating == 2 %}checked{% endif %}>
+                <label for="star2" class="star">★</label>
+                <input type="radio" id="star1" name="rating" value="1" {% if template_data.user_rating and template_data.user_rating.rating == 1 %}checked{% endif %}>
+                <label for="star1" class="star">★</label>
+              </div>
+              <button type="submit" class="btn btn-gt-navy text-white mt-2">
+                {% if template_data.user_rating %}Update Rating{% else %}Submit Rating{% endif %}
+              </button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i> Please <a href="{% url 'accounts.login' %}">log in</a> to rate this movie.
+        </div>
+        {% endif %}
 
         <h2>Reviews</h2>
         <hr />

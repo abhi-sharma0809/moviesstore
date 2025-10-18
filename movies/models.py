@@ -11,6 +11,35 @@ class Movie(models.Model):
 
     def __str__(self):
         return str(self.id) + ' - ' + self.name
+    
+    @property
+    def average_rating(self):
+        """Calculate the average rating for this movie"""
+        from django.db.models import Avg
+        avg = self.ratings.aggregate(Avg('rating'))['rating__avg']
+        return round(avg, 1) if avg else 0
+    
+    @property
+    def rating_count(self):
+        """Get the total number of ratings for this movie"""
+        return self.ratings.count()
+    
+    @property
+    def stars_display(self):
+        """Returns a string of stars for display based on average rating"""
+        avg = self.average_rating
+        if avg == 0:
+            return "☆☆☆☆☆"
+        full_stars = int(avg)
+        half_star = 1 if avg - full_stars >= 0.5 else 0
+        empty_stars = 5 - full_stars - half_star
+        return "★" * full_stars + "☆" * half_star + "☆" * empty_stars
+    
+    def get_popularity_in_region(self, region):
+        """Get the popularity (purchase count) of this movie in a specific region"""
+        return self.purchases.filter(region=region).aggregate(
+            total=models.Sum('quantity')
+        )['total'] or 0
 
 class Review(models.Model):
     id = models.AutoField(primary_key=True)
@@ -60,3 +89,50 @@ class PetitionVote(models.Model):
     
     def __str__(self):
         return f"{self.user.username} voted {self.vote_type} on {self.petition.movie_name}"
+
+class MovieRating(models.Model):
+    RATING_CHOICES = [
+        (1, '1 Star'),
+        (2, '2 Stars'),
+        (3, '3 Stars'),
+        (4, '4 Stars'),
+        (5, '5 Stars'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='ratings')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='movie_ratings')
+    rating = models.IntegerField(choices=RATING_CHOICES)
+    rated_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('movie', 'user')  # Each user can only rate a movie once
+    
+    def __str__(self):
+        return f"{self.user.username} rated {self.movie.name} {self.rating} stars"
+    
+    @property
+    def stars_display(self):
+        """Returns a string of stars for display"""
+        return '★' * self.rating + '☆' * (5 - self.rating)
+
+class GeographicRegion(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100, unique=True)
+    latitude = models.FloatField(help_text="Center latitude for map display")
+    longitude = models.FloatField(help_text="Center longitude for map display")
+    zoom_level = models.IntegerField(default=10, help_text="Map zoom level for this region")
+    
+    def __str__(self):
+        return self.name
+
+class MoviePurchase(models.Model):
+    id = models.AutoField(primary_key=True)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='purchases')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='movie_purchases')
+    region = models.ForeignKey(GeographicRegion, on_delete=models.CASCADE, related_name='purchases')
+    purchase_date = models.DateTimeField(auto_now_add=True)
+    quantity = models.PositiveIntegerField(default=1)
+    
+    def __str__(self):
+        return f"{self.user.username} purchased {self.movie.name} in {self.region.name}"

@@ -1,0 +1,91 @@
+/* Sticky footer implementation */
+html, body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+body > div {
+  flex: 1;
+}
+
+.bg-index{
+  background: url("/static/img/background.jpg") no-repeat fixed;
+  background-size: 100% auto;
+}
+
+.navbar a.nav-link {
+  color: #FFFEF6 !important;
+}
+
+.bg-dark {
+  background-color: #00263B !important; /* Georgia Tech Navy Blue */
+}
+
+.ms-footer {
+  background-color: #00263B; /* Georgia Tech Navy Blue */
+  width: 100%;
+  margin-top: auto;
+}
+
+.ms-footer p {
+  color: #7F7F7F;
+  font-size: 13px;
+}
+
+.ms-footer a:hover {
+  color: #ab9136; /* Georgia Tech Gold */
+  text-decoration: none;
+}
+
+.ms-footer-bottom span{
+  font-size: 13px;
+  line-height: 38px;
+}
+
+.ms-footer-bottom a {
+  color: #B3A369; /* Georgia Tech Gold */
+  text-decoration: none;
+}
+
+.ms-footer-bottom a:hover {
+  color: #4f1a1a;
+}
+
+.img-card-200 {
+  width: fit-content;
+  max-height: 200px;
+}
+
+.img-card-400 {
+  width: fit-content;
+  max-height: 400px;
+}
+
+/* Georgia Tech themed buttons */
+.btn-gt-gold {
+  background-color: #B3A369;
+  border-color: #B3A369;
+  color: #00263B;
+}
+
+.btn-gt-gold:hover {
+  background-color: #9B8A4F;
+  border-color: #9B8A4F;
+  color: #00263B;
+}
+
+.btn-gt-navy {
+  background-color: #00263B;
+  border-color: #00263B;
+  color: #B3A369;
+}
+
+.btn-gt-navy:hover {
+  background-color: #001A2B;
+  border-color: #001A2B;
+  color: #B3A369;
+}

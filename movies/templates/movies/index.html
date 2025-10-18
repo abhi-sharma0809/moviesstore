@@ -33,6 +33,12 @@
             <a href="{% url 'movies.show' id=movie.id %}" class="btn btn-gt-navy text-white">
               {{ movie.name }}
             </a>
+            {% if movie.average_rating > 0 %}
+            <div class="mt-2">
+              <span class="text-warning">{{ movie.stars_display }}</span>
+              <small class="text-muted d-block">({{ movie.average_rating }}/5)</small>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>

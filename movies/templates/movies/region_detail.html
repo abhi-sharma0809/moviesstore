@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<div class="p-3">
+  <div class="container">
+    <div class="row mt-3">
+      <div class="col mx-auto mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <h2>Trending Movies in {{ template_data.region.name }}</h2>
+          <a href="{% url 'movies.local_popularity_map' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Map
+          </a>
+        </div>
+        <hr />
+        <p class="card-text">
+          Movies are ranked by the number of purchases in {{ template_data.region.name }}.
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-8">
+        {% if template_data.movies %}
+          {% for movie in template_data.movies %}
+          <div class="card mb-3">
+            <div class="row g-0">
+              <div class="col-md-3">
+                <img src="{{ movie.image.url }}" class="img-fluid rounded-start h-100" style="object-fit: cover;" alt="{{ movie.name }}">
+              </div>
+              <div class="col-md-9">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h5 class="card-title">
+                        <a href="{% url 'movies.show' id=movie.id %}" class="text-decoration-none">
+                          {{ movie.name }}
+                        </a>
+                      </h5>
+                      <p class="card-text">{{ movie.description|truncatewords:30 }}</p>
+                    </div>
+                    <div class="text-end">
+                      <span class="badge bg-primary fs-6">{{ movie.region_purchases }} purchases</span>
+                    </div>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div>
+                      <span class="text-warning fs-5">{{ movie.stars_display }}</span>
+                      <small class="text-muted ms-2">
+                        ({{ movie.average_rating }}/5 from {{ movie.rating_count }} ratings)
+                      </small>
+                    </div>
+                    <div>
+                      <span class="h5 text-success">${{ movie.price }}</span>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-3">
+                    <a href="{% url 'movies.show' id=movie.id %}" class="btn btn-gt-navy text-white">
+                      View Details
+                    </a>
+                    <a href="{% url 'cart.add' id=movie.id %}" class="btn btn-outline-primary">
+                      Add to Cart
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-5">
+            <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No Movie Purchases Yet</h4>
+            <p class="text-muted">No movies have been purchased in {{ template_data.region.name }} yet.</p>
+            <a href="{% url 'movies.index' %}" class="btn btn-gt-navy text-white">
+              Browse Movies
+            </a>
+          </div>
+        {% endif %}
+      </div>
+      
+      <div class="col-md-4">
+        <!-- Region Statistics -->
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Region Statistics</h5>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-6">
+                <h4 class="text-primary">{{ template_data.movies|length }}</h4>
+                <small class="text-muted">Movies Purchased</small>
+              </div>
+              <div class="col-6">
+                <h4 class="text-success">
+                  {% if template_data.movies %}
+                    {% for movie in template_data.movies %}
+                      {% if forloop.first %}{{ movie.region_purchases }}{% endif %}
+                    {% endfor %}
+                  {% else %}
+                    0
+                  {% endif %}
+                </h4>
+                <small class="text-muted">Total Purchases</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Map Preview -->
+        <div class="card mt-3">
+          <div class="card-header">
+            <h5 class="mb-0">Location</h5>
+          </div>
+          <div class="card-body">
+            <div id="mini-map" style="height: 200px; width: 100%;"></div>
+            <p class="mt-2 mb-0">
+              <small class="text-muted">
+                <i class="fas fa-map-marker-alt"></i> 
+                {{ template_data.region.name }}
+              </small>
+            </p>
+          </div>
+        </div>
+        
+        <!-- Top Movies Summary -->
+        {% if template_data.movies %}
+        <div class="card mt-3">
+          <div class="card-header">
+            <h5 class="mb-0">Top 5 Movies</h5>
+          </div>
+          <div class="card-body">
+            <ol class="list-group list-group-numbered">
+              {% for movie in template_data.movies|slice:":5" %}
+              <li class="list-group-item d-flex justify-content-between align-items-start">
+                <div class="ms-2 me-auto">
+                  <div class="fw-bold">
+                    <a href="{% url 'movies.show' id=movie.id %}" class="text-decoration-none">
+                      {{ movie.name }}
+                    </a>
+                  </div>
+                  <small class="text-muted">{{ movie.region_purchases }} purchases</small>
+                </div>
+                <span class="badge bg-primary rounded-pill">{{ movie.region_purchases }}</span>
+              </li>
+              {% endfor %}
+            </ol>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet CSS and JS for mini map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize mini map
+    var miniMap = L.map('mini-map').setView([{{ template_data.region.latitude }}, {{ template_data.region.longitude }}], {{ template_data.region.zoom_level }});
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(miniMap);
+    
+    // Add marker for this region
+    L.marker([{{ template_data.region.latitude }}, {{ template_data.region.longitude }}])
+        .addTo(miniMap)
+        .bindPopup('{{ template_data.region.name }}');
+});
+</script>
+{% endblock content %}
+

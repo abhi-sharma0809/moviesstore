@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Movie, Review, MoviePetition, PetitionVote
+from .models import Movie, Review, MoviePetition, PetitionVote, MovieRating, GeographicRegion, MoviePurchase
 
 class MovieAdmin(admin.ModelAdmin):
     ordering = ['name']
@@ -35,7 +35,26 @@ class PetitionVoteAdmin(admin.ModelAdmin):
     search_fields = ['user__username', 'petition__movie_name']
     readonly_fields = ['voted_at']
 
+class MovieRatingAdmin(admin.ModelAdmin):
+    list_display = ['user', 'movie', 'rating', 'rated_at']
+    list_filter = ['rating', 'rated_at']
+    search_fields = ['user__username', 'movie__name']
+    readonly_fields = ['rated_at']
+
+class GeographicRegionAdmin(admin.ModelAdmin):
+    list_display = ['name', 'latitude', 'longitude', 'zoom_level']
+    search_fields = ['name']
+
+class MoviePurchaseAdmin(admin.ModelAdmin):
+    list_display = ['user', 'movie', 'region', 'quantity', 'purchase_date']
+    list_filter = ['region', 'purchase_date']
+    search_fields = ['user__username', 'movie__name', 'region__name']
+    readonly_fields = ['purchase_date']
+
 admin.site.register(Movie, MovieAdmin)
 admin.site.register(Review)
 admin.site.register(MoviePetition, MoviePetitionAdmin)
 admin.site.register(PetitionVote, PetitionVoteAdmin)
+admin.site.register(MovieRating, MovieRatingAdmin)
+admin.site.register(GeographicRegion, GeographicRegionAdmin)
+admin.site.register(MoviePurchase, MoviePurchaseAdmin)

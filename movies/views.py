@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Movie, Review, MoviePetition, PetitionVote
+from .models import Movie, Review, MoviePetition, PetitionVote, MovieRating, GeographicRegion, MoviePurchase
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum, Avg
+from django.http import JsonResponse
 
 def index(request):
     search_term = request.GET.get('search')
@@ -19,11 +20,20 @@ def index(request):
 def show(request, id):
     movie = Movie.objects.get(id=id)
     reviews = Review.objects.filter(movie=movie)
+    
+    # Get user's rating if they're logged in
+    user_rating = None
+    if request.user.is_authenticated:
+        try:
+            user_rating = MovieRating.objects.get(movie=movie, user=request.user)
+        except MovieRating.DoesNotExist:
+            user_rating = None
 
     template_data = {}
     template_data['title'] = f'{movie.name} - Georgia Tech Movie Store'
     template_data['movie'] = movie
     template_data['reviews'] = reviews
+    template_data['user_rating'] = user_rating
     return render(request, 'movies/show.html', {'template_data': template_data})
 
 @login_required
@@ -159,3 +169,109 @@ def vote_petition(request, petition_id):
             return redirect('movies.petition_detail', petition_id=petition_id)
     
     return redirect('movies.petition_detail', petition_id=petition_id)
+
+# Rating views
+@login_required
+def rate_movie(request, movie_id):
+    """Rate a movie with 1-5 stars"""
+    movie = get_object_or_404(Movie, id=movie_id)
+    
+    if request.method == 'POST':
+        rating_value = request.POST.get('rating')
+        
+        if rating_value and rating_value.isdigit():
+            rating_value = int(rating_value)
+            if 1 <= rating_value <= 5:
+                # Check if user already rated this movie
+                existing_rating = MovieRating.objects.filter(movie=movie, user=request.user).first()
+                
+                if existing_rating:
+                    # Update existing rating
+                    existing_rating.rating = rating_value
+                    existing_rating.save()
+                    messages.info(request, f'Your rating for "{movie.name}" has been updated to {rating_value} stars.')
+                else:
+                    # Create new rating
+                    rating = MovieRating()
+                    rating.movie = movie
+                    rating.user = request.user
+                    rating.rating = rating_value
+                    rating.save()
+                    messages.success(request, f'Thank you for rating "{movie.name}" {rating_value} stars!')
+                
+                return redirect('movies.show', id=movie_id)
+    
+    return redirect('movies.show', id=movie_id)
+
+# Local Popularity Map views
+def local_popularity_map(request):
+    """Display the local popularity map"""
+    regions = GeographicRegion.objects.all()
+    
+    # Get trending movies by region
+    region_data = []
+    for region in regions:
+        # Get top 5 movies by purchase count in this region
+        top_movies = Movie.objects.annotate(
+            region_purchases=Sum('purchases__quantity', filter=Q(purchases__region=region))
+        ).filter(region_purchases__gt=0).order_by('-region_purchases')[:5]
+        
+        region_data.append({
+            'region': region,
+            'top_movies': top_movies,
+            'total_purchases': sum(movie.region_purchases for movie in top_movies)
+        })
+    
+    template_data = {}
+    template_data['title'] = 'Local Popularity Map - Georgia Tech Movie Store'
+    template_data['regions'] = region_data
+    
+    return render(request, 'movies/local_popularity_map.html', {'template_data': template_data})
+
+def region_detail(request, region_id):
+    """Display detailed trending movies for a specific region"""
+    region = get_object_or_404(GeographicRegion, id=region_id)
+    
+    # Get all movies with their purchase counts in this region
+    movies = Movie.objects.annotate(
+        region_purchases=Sum('purchases__quantity', filter=Q(purchases__region=region)),
+        avg_rating=Avg('ratings__rating')
+    ).filter(region_purchases__gt=0).order_by('-region_purchases')
+    
+    template_data = {}
+    template_data['title'] = f'Trending Movies in {region.name} - Georgia Tech Movie Store'
+    template_data['region'] = region
+    template_data['movies'] = movies
+    
+    return render(request, 'movies/region_detail.html', {'template_data': template_data})
+
+def region_data_api(request, region_id):
+    """API endpoint to get region data for map markers"""
+    region = get_object_or_404(GeographicRegion, id=region_id)
+    
+    # Get top movies in this region
+    top_movies = Movie.objects.annotate(
+        region_purchases=Sum('purchases__quantity', filter=Q(purchases__region=region))
+    ).filter(region_purchases__gt=0).order_by('-region_purchases')[:5]
+    
+    data = {
+        'region': {
+            'id': region.id,
+            'name': region.name,
+            'latitude': region.latitude,
+            'longitude': region.longitude,
+            'zoom_level': region.zoom_level
+        },
+        'top_movies': [
+            {
+                'id': movie.id,
+                'name': movie.name,
+                'purchases': movie.region_purchases,
+                'average_rating': movie.average_rating,
+                'rating_count': movie.rating_count
+            }
+            for movie in top_movies
+        ]
+    }
+    
+    return JsonResponse(data)

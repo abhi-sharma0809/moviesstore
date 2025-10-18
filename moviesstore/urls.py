@@ -29,3 +29,7 @@ urlpatterns = [
 
 urlpatterns += static(settings.MEDIA_URL,
     document_root=settings.MEDIA_ROOT)
+
+# Serve static files in production (not recommended for production, but useful for testing)
+if not settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
